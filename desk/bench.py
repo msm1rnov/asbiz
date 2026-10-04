@@ -39,6 +39,19 @@ DETAILED = (
 - другое: всё остальное; при сомнении выбирай «другое»."""
 )
 
+DETAILED_WITH_EXAMPLES = (
+    DETAILED
+    + """
+
+Примеры:
+Обращение: За отмененный заказ деньги списали дважды, одна операция до сих пор висит в истории. Верните лишнее списание».
+Категория: платежи
+
+Обращение: После смены номера телефона перестал приходить одноразовый код, в аккаунт войти не могу».
+Категория: доступ
+"""
+)
+
 # Рассуждение. max_tokens кандидата должен быть больше budget_tokens
 THINKING = {"thinking": {"type": "enabled", "budget_tokens": 1024}}
 
@@ -58,6 +71,7 @@ CANDIDATES = [
     Candidate("короткая постановка", SHORT),
     Candidate("постановка с правилами", DETAILED),
     Candidate("правила + рассуждение", DETAILED, body=THINKING, max_tokens=2048),
+    Candidate("правила + два примера", DETAILED_WITH_EXAMPLES),
 ]
 
 
@@ -149,6 +163,7 @@ def summarize(
         "p50, с": percentile(latencies, 0.5),
         "p95, с": percentile(latencies, 0.95),
         "первый токен p50, с": percentile(ttfts, 0.5),
+        "входных токенов на обращение": per(total.input_tokens),
         "токенов на обращение": per(total.total_tokens),
         "взвешенных на обращение": per(total.weighted),
         "цена за 1000, у.е.": 1000 * per(total.cost),

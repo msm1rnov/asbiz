@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from desk.bench import CANDIDATES, Candidate, Row, parse_category, percentile, run_candidate, summarize
+from desk.bench import CANDIDATES, Candidate, Row, parse_category, percentile, prompt, run_candidate, summarize
 from desk.llm import LLMError, Usage
 from desk.stream import StreamResult
 
@@ -74,6 +74,7 @@ def test_summarize_counts_failures_as_errors():
     s = summarize("кандидат", rows, flow_per_day=1000)
     assert s["точность"] == pytest.approx(1 / 3)
     assert (s["p50, с"], s["p95, с"], s["первый токен p50, с"]) == (1.0, 3.0, 0.2)
+    assert s["входных токенов на обращение"] == pytest.approx(100)
     assert s["взвешенных на обращение"] == pytest.approx(110)
     assert s["цена за 1000, у.е."] == pytest.approx(2.0)
     assert s["взвешенных в месяц, млн"] == pytest.approx(110 * 1000 * 30 / 1e6)
@@ -84,3 +85,15 @@ def test_summarize_counts_failures_as_errors():
 def test_candidates_are_consistent():
     thinking = [c for c in CANDIDATES if "thinking" in c.body]
     assert thinking and all(c.max_tokens > c.body["thinking"]["budget_tokens"] for c in thinking)
+
+
+def test_example_candidate_supplies_two_labelled_demonstrations_to_model():
+    """Поломка: кандидат с примерами удалён или отправляет модели неразмеченные примеры."""
+    candidate = next(c for c in CANDIDATES if c.name == "правила + два примера")
+    messages = prompt(candidate, {"text": "Не приходит код после смены номера"})
+    system = messages[0]["content"]
+
+    assert messages[0]["role"] == "system"
+    assert system.count("Обращение:") >= 2
+    assert "Категория: платежи" in system
+    assert "Категория: доступ" in system
